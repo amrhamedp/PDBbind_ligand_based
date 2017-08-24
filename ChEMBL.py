@@ -1,3 +1,4 @@
+import os
 import requests
 import pandas as pd
 from lxml import etree
@@ -75,3 +76,15 @@ def prepare_data_frame(chembl_id, smiles=False):
                              'operator': operator, 'value': value, 'units': units})
         return data[['chembl id', 'bioactivity type', 'operator', 'value', 'units']]
 
+
+def save_data_frame(pdbbind_ids, smiles=False, directory=''):
+    """Save data frames to csv"""
+
+    for pdbbind_id in pdbbind_ids:
+        f = os.path.join(directory, 'chembl_%s.csv' % pdbbind_id)
+        if not os.path.isfile(f):
+            uniprot_id = get_uniprot_id(pdbbind_id=pdbbind_id)
+            chembl_id = get_chembl_id(uniprot_id=uniprot_id)
+
+            data = prepare_data_frame(chembl_id, smiles=smiles)
+            data.to_csv(f)
