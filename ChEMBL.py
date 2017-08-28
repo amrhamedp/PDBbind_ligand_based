@@ -77,7 +77,7 @@ def prepare_data_frame(chembl_id, smiles=False):
         return data[['chembl id', 'bioactivity type', 'operator', 'value', 'units']]
 
 
-def save_data_frame(pdbbind_ids, smiles=False, directory=''):
+def save_data_frames(pdbbind_ids, smiles=False, directory=''):
     """Save data frames to csv"""
 
     for pdbbind_id in pdbbind_ids:
@@ -88,3 +88,12 @@ def save_data_frame(pdbbind_ids, smiles=False, directory=''):
 
             data = prepare_data_frame(chembl_id, smiles=smiles)
             data.to_csv(f)
+
+
+def replace(bs, old_unit, new_unit, factor=1):
+    """Replace old unit with new unit in bioactives dataframe"""
+    idxs = bs[bs['units'] == old_unit].index
+    for idx in idxs:
+        val = bs['value'][idx]
+        bs.set_value(index=idx, col='value', value=float(val) * factor)
+        bs.set_value(index=idx, col='units', value=new_unit)
