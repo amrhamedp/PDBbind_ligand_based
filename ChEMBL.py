@@ -46,7 +46,7 @@ def smiles_chembl(chembl_ids):
     for chembl_id in chembl_ids:
         try:
             smiles.append(compounds.get(chembl_id)['smiles'])
-        except:
+        except KeyError as e:
             smiles.append('Unspecified')
 
     return smiles
@@ -68,22 +68,23 @@ def chembl_to_data_frame(uniprot_id):
     """
 
     chembl_id = get_chembl_id(uniprot_id)
-    if not chembl_id:
-        return None
 
-    activities = targets.bioactivities(chembl_id=chembl_id)
     chemblid = []
     act_type = []
     operator = []
     value = []
     units = []
-    for act in activities:
-        if act['value'] != 'Unspecified':
-            chemblid.append(act['ingredient_cmpd_chemblid'])
-            act_type.append(act['bioactivity_type'])
-            operator.append(act['operator'])
-            value.append(act['value'])
-            units.append(act['units'])
+
+    if chembl_id:
+        activities = targets.bioactivities(chembl_id=chembl_id)
+
+        for act in activities:
+            if act['value'] != 'Unspecified':
+                chemblid.append(act['ingredient_cmpd_chemblid'])
+                act_type.append(act['bioactivity_type'])
+                operator.append(act['operator'])
+                value.append(act['value'])
+                units.append(act['units'])
 
     smiles = smiles_chembl(chemblid)
     data = pd.DataFrame({'chembl_id': chemblid, 'bioactivity_type': act_type,
@@ -113,7 +114,7 @@ def create_data_frames(uniprot_ids, directory='', overwrite=False):
     for uniprot_id in uniprot_ids:
 
         f = os.path.join(directory, 'uniprot', 'chembl_%s.csv' % uniprot_id)
-        if overwrite or (not overwrite and not os.path.isfile(f)):
+        if overwrite or not os.path.isfile(f):
 
             data = chembl_to_data_frame(uniprot_id)
             if data is not None:
@@ -158,3 +159,17 @@ def find_all_units(uniprot_ids, directory=''):
             units += data['units'].tolist()
 
     return set(units)
+
+
+def find_all_bioact(uniprot_ids, directory=''):
+    """Find all biact in all dataframes"""
+
+    bioact = []
+    for uniprot_id in uniprot_ids:
+
+        f = os.path.join(directory, 'uniprot', 'chembl_%s.csv' % uniprot_id)
+        if os.path.isfile(f):
+            data = pd.read_csv(f)
+            bioact += data['bioactivity_type'].tolist()
+
+    return set(bioact)
