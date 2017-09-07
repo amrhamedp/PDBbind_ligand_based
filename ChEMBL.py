@@ -1,4 +1,5 @@
 import os
+import sys
 import requests
 import pandas as pd
 from lxml import etree
@@ -7,7 +8,7 @@ import chembl_webresource_client as chembl
 targets = chembl.TargetResource()
 
 def get_uniprot_id(pdb_id):
-    """Use pdb ID to find uniprot ID"""
+    """Use PDB ID to find Uniprot ID"""
 
     with requests.get('http://www.rcsb.org/pdb/rest/describeMol?structureId=%s' % pdb_id) as req:
         req_tree = etree.XML(req.text)
@@ -17,17 +18,28 @@ def get_uniprot_id(pdb_id):
 
 
 def get_chembl_id(uniprot_id):
-    """Use uniprot ID to find chembl target ID"""
+    """Use Uniprot ID to find ChEMBL target ID"""
 
     try:
         chembl_id = targets.get(uniprot=uniprot_id)['chemblId']
         return chembl_id
     except:
-        print('No chemblId for', uniprot_id)
+        print('No chemblId for %s' % uniprot_id, file=sys.stderr)
 
 
 def smiles_chembl(chembl_ids):
-    """Use compound IDs from ChEMBL to find SMILES"""
+    """Use compound IDs from ChEMBL to find SMILES
+
+    Parameters
+    ----------
+    chembl_ids: list of strings
+        List of ChEMBL IDs.
+
+    Returns
+    -------
+    smiles: list of strings
+        List of smiles strings.
+    """
 
     smiles = []
     compounds = chembl.CompoundResource()
@@ -40,8 +52,20 @@ def smiles_chembl(chembl_ids):
     return smiles
 
 
-def prepare_data_frame(uniprot_id):
-    """Prepare data frame for target"""
+def chembl_to_data_frame(uniprot_id):
+    """Prepare data frame for target
+
+    Parameters
+    ----------
+    uniprot_id: str
+        Uniprot ID.
+
+    Returns
+    -------
+    data: DataFrame
+        Columns: uniprot_id, chembl_id, smiles, bioactivity_type, operator, value, units.
+
+    """
 
     chembl_id = get_chembl_id(uniprot_id)
     if not chembl_id:
@@ -71,26 +95,55 @@ def prepare_data_frame(uniprot_id):
 
 
 def create_data_frames(uniprot_ids, directory='', overwrite=False):
-    """Create and save data frames to csv"""
+    """Create and save data frames to csv
+
+    Parameters
+    ----------
+    uniprot_ids: list of stings
+        List of strings: uniprot IDs.
+
+    directory: str
+        Directory where files will be saved.
+
+    overwrite: bool
+        Overwrites your files if True.
+
+    """
 
     for uniprot_id in uniprot_ids:
 
         f = os.path.join(directory, 'uniprot', 'chembl_%s.csv' % uniprot_id)
         if overwrite or (not overwrite and not os.path.isfile(f)):
 
-            data = prepare_data_frame(uniprot_id)
+            data = chembl_to_data_frame(uniprot_id)
             if data is not None:
                 data.to_csv(f, index=False)
 
 
-def replace(bs, old_unit, new_unit, factor=1):
-    """Replace old unit with new unit in bioactives dataframe"""
+def convert_unit(df, old_unit, new_unit, factor=1):
+    """Replace old unit with new unit in bioactives dataframe
 
-    idxs = bs[bs['units'] == old_unit].index
+    Parameters
+    ----------
+    df : DataFrame
+        DataFrame created by chembl_to_data_frame function.
+
+    old_unit : str
+        Unit you want to convert.
+
+    new_unit : str
+        Unit to convert to.
+
+    factor : float
+        Factor to convert units.
+
+    """
+
+    idxs = df[df['units'] == old_unit].index
     for idx in idxs:
-        val = bs['value'][idx]
-        bs.set_value(index=idx, col='value', value=float(val) * factor)
-        bs.set_value(index=idx, col='units', value=new_unit)
+        val = df['value'][idx]
+        df.set_value(index=idx, col='value', value=val * factor)
+        df.set_value(index=idx, col='units', value=new_unit)
 
 
 def find_all_units(uniprot_ids, directory=''):
@@ -105,35 +158,3 @@ def find_all_units(uniprot_ids, directory=''):
             units += data['units'].tolist()
 
     return set(units)
-
-
-def change_units(bs):
-
-    replace(bs, old_unit='10\'4mol/L', new_unit='10\'4M', factor=1)
-    replace(bs, old_unit='l mol-1', new_unit='/M', factor=1)
-    # /nM
-    replace(bs, old_unit='/M', new_unit='/nM', factor=1 / 10e9)
-    replace(bs, old_unit='/uM', new_unit='/nM', factor=1 / 10e3)
-    replace(bs, old_unit='10\'2/M', new_unit='/nM', factor=1 / 10e7)
-    replace(bs, old_unit='10\'4/M', new_unit='/nM', factor=1 / 10e5)
-    replace(bs, old_unit='10\'5/M', new_unit='/nM', factor=1 / 10e4)
-    replace(bs, old_unit='10\'7/M', new_unit='/nM', factor=1 / 10e2)
-    replace(bs, old_unit='10\'8/M', new_unit='/nM', factor=1 / 10e1)
-    replace(bs, old_unit='10\'9/M', new_unit='/nM', factor=1)
-    # nM
-    replace(bs, old_unit='M', new_unit='nM', factor=10e9)
-    replace(bs, old_unit='mM', new_unit='nM', factor=10e6)
-    replace(bs, old_unit='uM', new_unit='nM', factor=10e3)
-    replace(bs, old_unit='pM', new_unit='nM', factor=1 / 10e3)
-    replace(bs, old_unit='10\'5mM', new_unit='nM', factor=10e11)
-    replace(bs, old_unit='10\'4M', new_unit='nM', factor=10e13)
-    replace(bs, old_unit='10\'10M', new_unit='nM', factor=10e19)
-
-    idxs = bs[bs['units'] == '/nM'].index
-    for idx in idxs:
-        val = bs['value'][idx]
-        bs.set_value(index=idx, col='value', value=1 / float(val))
-        bs.set_value(index=idx, col='units', value='nM')
-
-    return bs
-
