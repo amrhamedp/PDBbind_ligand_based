@@ -173,3 +173,17 @@ def find_all_bioact(uniprot_ids, directory=''):
             bioact += data['bioactivity_type'].tolist()
 
     return set(bioact)
+
+
+def convert_units(df):
+    """Convert units in data frame"""
+
+    convert_nM = {'10\'10M': 10e19, '10\'4M': 10e13, '10\'5mM': 10e11,
+                  'M': 10e9, 'mM': 10e6, 'uM': 10e3, 'pM': 1 / 10e3}
+
+    for unit in convert_nM:
+        # print(df.loc[df['units'] == unit])
+        df.loc[df['units'] == unit, 'value'] *= convert_nM[unit]
+        df.loc[df['units'] == unit, 'units'] = 'nM'
+
+    return df
