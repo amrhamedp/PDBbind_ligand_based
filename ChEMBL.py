@@ -161,8 +161,8 @@ def find_all_units(uniprot_ids, directory=''):
     return set(units)
 
 
-def find_all_bioact(uniprot_ids, directory=''):
-    """Find all biact in all dataframes"""
+def find_all_type_of_bioact(uniprot_ids, directory=''):
+    """Find all type of biact in all dataframes"""
 
     bioact = []
     for uniprot_id in uniprot_ids:
@@ -175,15 +175,15 @@ def find_all_bioact(uniprot_ids, directory=''):
     return set(bioact)
 
 
-def convert_units(df):
-    """Convert units in data frame"""
+def convert_units(df, convert_dict=None):
+    """Convert units in data frame using dict"""
 
-    convert_nM = {'10\'10M': 10e19, '10\'4M': 10e13, '10\'5mM': 10e11,
-                  'M': 10e9, 'mM': 10e6, 'uM': 10e3, 'pM': 1 / 10e3}
+    if convert_dict == None:
+        convert_dict = {'10\'10M': 10e19, '10\'4M': 10e13, '10\'5mM': 10e11,
+                        'M': 10e9, 'mM': 10e6, 'uM': 10e3, 'pM': 1 / 10e3}
 
-    for unit in convert_nM:
-        # print(df.loc[df['units'] == unit])
-        df.loc[df['units'] == unit, 'value'] *= convert_nM[unit]
+    for unit in convert_dict:
+        df.loc[df['units'] == unit, 'value'] *= convert_dict[unit]
         df.loc[df['units'] == unit, 'units'] = 'nM'
 
     return df
