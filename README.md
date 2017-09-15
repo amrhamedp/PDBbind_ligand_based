@@ -1,1 +1,1 @@
-README
+In the notebook we took structures from PDBbind core-set to find Uniprot IDs for their corresponding protein. Next we downloaded data from ChEMBL about ligands interacting with our found proteins. Finally we cleaned and filtered data and saved them as csv files.
