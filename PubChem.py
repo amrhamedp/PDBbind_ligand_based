@@ -3,24 +3,10 @@ import requests
 from lxml import etree
 
 
-def get_gene_name(uniprot_id):
-    """Use Uniprot ID to get gene name"""
+def get_AIDs(gid):
+    """Use Gene ID number to get list of PubChem Assay ID"""
 
-    try:
-        req_tree = etree.parse('http://www.uniprot.org/uniprot/%s.xml' % uniprot_id)
-        gene_name = req_tree.find('.//{http://uniprot.org/uniprot}gene/{http://uniprot.org/uniprot}name').text
-
-        return gene_name
-
-    except:
-        print('No gene name for', uniprot_id)
-        return None
-
-
-def get_AIDs(gene_name):
-    """Use gene name to get list of PubChem Assay ID"""
-
-    req = requests.get('https://pubchem.ncbi.nlm.nih.gov/rest/pug/assay/target/genesymbol/%s/aids/TXT' % gene_name)
+    req = requests.get('https://pubchem.ncbi.nlm.nih.gov/rest/pug/assay/target/geneid/%s/aids/TXT' % gid)
     aids = req.text.split()
 
     return aids
