@@ -2,6 +2,7 @@ import os
 import requests
 import pandas as pd
 from lxml import etree
+import pubchempy
 
 
 def get_AIDs(gid):
@@ -42,6 +43,7 @@ def gene_id_to_data_frame(gene_id, aids, bioactivity_type):
                  'pubchem_aid': [],
                  'pubchem_cid': [],
                  'pubchem_sid': [],
+                 'smiles': [],
                  'bioactivity': [],
                  'qualifier': [],
                  'value': [],
@@ -63,6 +65,14 @@ def gene_id_to_data_frame(gene_id, aids, bioactivity_type):
                     gene_dict['qualifier'].append(data[qualifier][idx])
                     gene_dict['value'].append(data[bioactivity][idx])
 
+                    smiles = get_smiles(str(int(data['PUBCHEM_CID'][idx])))
+                    print(smiles)
+                    if smiles:
+                        gene_dict['smiles'].append(smiles)
+                    else:
+                        gene_dict['smiles'].append('Unspecified')
+                        print('blop')
+
                     if data[bioactivity]['RESULT_UNIT'] == 'MICROMOLAR':
                         gene_dict['unit'].append('uM')
                     elif data[bioactivity]['RESULT_UNIT'] == 'NANOMOLAR':
@@ -77,7 +87,7 @@ def gene_id_to_data_frame(gene_id, aids, bioactivity_type):
             continue
 
     return pd.DataFrame(gene_dict)[['gene_id', 'pubchem_aid', 'pubchem_cid', 'pubchem_sid',
-                                    'bioactivity', 'qualifier', 'value', 'unit']]
+                                    'smiles', 'bioactivity', 'qualifier', 'value', 'unit']]
 
 
 
@@ -107,6 +117,13 @@ def create_data_frame(gene_id, aids, bioactivity_types, directory='', overwrite=
         data = pd.concat(gene_id_to_data_frame(gene_id, aids, bioactivity)
                          for bioactivity in bioactivity_types)
         data.to_csv(f, index=False)
+
+
+def get_smiles(cid):
+    """Get smiles from PubChem using Compound ID"""
+
+    comp = pubchempy.Compound.from_cid(cid)
+    return comp.canonical_smiles
 
 
 def convert_unit(df, old_unit, new_unit, factor=1):
